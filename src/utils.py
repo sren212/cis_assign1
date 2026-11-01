@@ -3,6 +3,25 @@ import numpy as np
 from data_types.nominal_types import vct3
 
 
+def sample_in_ball(rng, radius, dimension, min_fraction=0.0):
+    """Draw a vector with norm in [min_fraction * radius, radius]."""
+    direction = rng.normal(size=dimension)
+    direction /= np.linalg.norm(direction)
+    magnitude = rng.uniform(min_fraction, 1.0) * radius
+    return magnitude * direction
+
+
+def sample_perpendicular(rng, axis, radius, min_fraction=0.0):
+    """Draw a bounded vector perpendicular to the supplied axis."""
+    axis_vec = axis.vec.ravel() if isinstance(axis, vct3) else np.asarray(axis, dtype=float).reshape(3)
+    axis_vec /= np.linalg.norm(axis_vec)
+    direction = rng.normal(size=3)
+    direction -= direction.dot(axis_vec) * axis_vec
+    direction /= np.linalg.norm(direction)
+    magnitude = rng.uniform(min_fraction, 1.0) * radius
+    return magnitude * direction
+
+
 def sample_normal(mean, cov, n=1):
     '''
     input: mean - mean vector of the multivariate normal distribution, OR a

@@ -1,4 +1,5 @@
 from .nominal_types import Frame, Rot, vct3
+from uncertainty_networks.se3 import exp_se3
 
 
 class uvct3:
@@ -22,6 +23,16 @@ class uFrame:
     def __init__(self, frame, cov=None):
         self.F = frame.F if isinstance(frame, uFrame) else (frame if isinstance(frame, Frame) else Frame(frame))
         self.cov = cov
+        self._left_convention = False
+
+    def as_left_convention(self):
+        out = uFrame(self)
+        out._left_convention = True
+        return out
+
+    def perturb(self, twist):
+        delta = Frame(exp_se3(twist))
+        return delta * self.F if self._left_convention else self.F * delta
 
     def __mul__(self, other):
         return self.F * other
