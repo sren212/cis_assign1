@@ -4,7 +4,7 @@ import numpy as np
 class vct3:
     """A 3-D column vector, expressed in millimetres."""
 
-    def __init__(self, x, y=None, z=None):
+    def __init__(self, x=(0.0, 0.0, 0.0), y=None, z=None):
         if y is None and z is None:
             values = np.asarray(x, dtype=float).reshape(3)
         elif y is not None and z is not None:
@@ -15,6 +15,18 @@ class vct3:
 
     def norm(self):
         return float(np.linalg.norm(self.vec))
+
+    @property
+    def x(self):
+        return float(self.vec[0, 0])
+
+    @property
+    def y(self):
+        return float(self.vec[1, 0])
+
+    @property
+    def z(self):
+        return float(self.vec[2, 0])
 
     def __add__(self, other):
         return vct3(self.vec + _as_vct3(other).vec)
@@ -52,8 +64,65 @@ class vct3Array:
 
 
 class Rot:
-    def __init__(self, matrix=None):
-        self.matrix = np.eye(3) if matrix is None else np.asarray(matrix, dtype=float).reshape(3, 3)
+    def __init__(self, axis=None, angle=None, *, matrix=None):
+        if matrix is not None:
+            if axis is not None or angle is not None:
+                raise TypeError("Rot accepts either matrix= or axis and angle")
+            self.matrix = np.asarray(matrix, dtype=float).reshape(3, 3)
+            return
+        if axis is None:
+            self.matrix = np.eye(3)
+            return
+        if angle is None:
+            self.matrix = np.asarray(axis, dtype=float).reshape(3, 3)
+            return
+
+        if isinstance(axis, str):
+            axes = {"x": [1.0, 0.0, 0.0], "y": [0.0, 1.0, 0.0], "z": [0.0, 0.0, 1.0]}
+            if axis not in axes:
+                raise ValueError(f"unknown rotation axis {axis!r}")
+            axis = np.asarray(axes[axis], dtype=float)
+        elif isinstance(axis, vct3):
+            axis = axis.vec.ravel()
+        else:
+            axis = np.asarray(axis, dtype=float).reshape(3)
+
+        axis /= np.linalg.norm(axis)
+        skew = np.array([[0.0, -axis[2], axis[1]], [axis[2], 0.0, -axis[0]], [-axis[1], axis[0], 0.0]])
+        self.matrix = np.eye(3) + np.sin(angle) * skew + (1.0 - np.cos(angle)) * (skew @ skew)
+
+    @classmethod
+    def eye(cls):
+        return cls()
+
+    def __mul__(self, other):
+        if isinstance(other, Rot):
+            return Rot(matrix=self.matrix @ other.matrix)
+        if isinstance(other, vct3):
+            return vct3(self.matrix @ other.vec)
+        return NotImplemented
+
+    def normalize(self):
+        u, _, vt = np.linalg.svd(self.matrix)
+        matrix = u @ vt
+        if np.linalg.det(matrix) < 0:
+            u[:, -1] *= -1.0
+            matrix = u @ vt
+        return Rot(matrix=matrix)
+
+    def axis_angle(self):
+        cos_angle = np.clip((np.trace(self.matrix) - 1.0) / 2.0, -1.0, 1.0)
+        vee = np.array([
+            self.matrix[2, 1] - self.matrix[1, 2],
+            self.matrix[0, 2] - self.matrix[2, 0],
+            self.matrix[1, 0] - self.matrix[0, 1],
+        ])
+        sin_angle = 0.5 * np.linalg.norm(vee)
+        angle = float(np.arctan2(sin_angle, cos_angle))
+        if sin_angle < 1e-12:
+            return vct3(1.0, 0.0, 0.0), 0.0
+        axis = vee / (2.0 * sin_angle)
+        return vct3(axis), angle
 
     @classmethod
     def xyz(cls, rx, ry, rz):
