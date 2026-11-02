@@ -11,6 +11,10 @@ class Covariance:
     def eye(cls, size, scale=1.0):
         return cls(np.eye(size) * scale)
 
+    @classmethod
+    def zeros(cls, size):
+        return cls(np.zeros((size, size)))
+
     def __array__(self, dtype=None):
         return np.asarray(self.matrix, dtype=dtype)
 

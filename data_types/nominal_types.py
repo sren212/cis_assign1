@@ -6,7 +6,7 @@ class vct3:
 
     def __init__(self, x=(0.0, 0.0, 0.0), y=None, z=None):
         if y is None and z is None:
-            values = np.asarray(x, dtype=float).reshape(3)
+            values = x.vec.ravel() if isinstance(x, vct3) else np.asarray(x, dtype=float).reshape(3)
         elif y is not None and z is not None:
             values = np.array([x, y, z], dtype=float)
         else:

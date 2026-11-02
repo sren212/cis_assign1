@@ -35,7 +35,10 @@ def create_tracker(name: str, F_approx: Frame) -> Tracker:
     return Tracker(name, F_approx)
 
 
-def sample_marker_bodies(tracker: Tracker, placed_bodies: List[PlacedBody]) -> Dict[str, ObservedBody]:
+def sample_marker_bodies(tracker: Tracker, placed_bodies: List[PlacedBody],
+                         sensor_noise_std: float = None,
+                         jiggle_angle_std: float = None,
+                         jiggle_pos_std: float = None) -> Dict[str, ObservedBody]:
     """{F1, ..., FN} = SampleMarkerBodies(trk)
 
     One simulated camera snapshot of every body in placed_bodies: a single
@@ -44,20 +47,24 @@ def sample_marker_bodies(tracker: Tracker, placed_bodies: List[PlacedBody]) -> D
     are read (independent per-marker sensor noise) and registered via
     Tracker.procrustes_solver.
     """
+    sensor_noise_std = constants.SENSOR_NOISE_STD if sensor_noise_std is None else sensor_noise_std
+    jiggle_angle_std = constants.TRACKER_JIGGLE_ANGLE_STD if jiggle_angle_std is None else jiggle_angle_std
+    jiggle_pos_std = constants.TRACKER_JIGGLE_POS_STD if jiggle_pos_std is None else jiggle_pos_std
+
     F_nom = tracker.F.F if isinstance(tracker.F, uFrame) else tracker.F
 
     jiggle_cov = Covariance(np.diag([
-        constants.TRACKER_JIGGLE_ANGLE_STD ** 2,
-        constants.TRACKER_JIGGLE_ANGLE_STD ** 2,
-        constants.TRACKER_JIGGLE_ANGLE_STD ** 2,
-        constants.TRACKER_JIGGLE_POS_STD ** 2,
-        constants.TRACKER_JIGGLE_POS_STD ** 2,
-        constants.TRACKER_JIGGLE_POS_STD ** 2,
+        jiggle_angle_std ** 2,
+        jiggle_angle_std ** 2,
+        jiggle_angle_std ** 2,
+        jiggle_pos_std ** 2,
+        jiggle_pos_std ** 2,
+        jiggle_pos_std ** 2,
     ]))
     eta = sample_normal(np.zeros(6), cov=jiggle_cov)[0]
     F_actual = F_nom * Frame(exp_se3(eta))
 
-    sensor_noise_cov = Covariance.eye(3, scale=constants.SENSOR_NOISE_STD ** 2)
+    sensor_noise_cov = Covariance.eye(3, scale=sensor_noise_std ** 2)
 
     saved_F = tracker.F
     tracker.F = F_actual
