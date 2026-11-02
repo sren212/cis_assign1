@@ -57,12 +57,15 @@ def place_marker_body(body: MarkerBody, F_approx: Frame, precision: str = "coars
     models a robot precisely moving to a *commanded* pose (e.g. step 8's
     test poses, where "delta_Ft is relatively small") instead.
     """
+    if precision == "exact":
+        body.update_world_frame(F_approx)
+        return PlacedBody(body=body, actual_placement=F_approx)
     if precision == "coarse":
         angle_std, pos_std = constants.BODY_PLACEMENT_ANGLE_STD, constants.BODY_PLACEMENT_POS_STD
     elif precision == "precise":
         angle_std, pos_std = constants.TEST_POSE_ANGLE_STD, constants.TEST_POSE_POS_STD
     else:
-        raise ValueError(f"place_marker_body: precision must be 'coarse' or 'precise', got {precision!r}")
+        raise ValueError(f"place_marker_body: precision must be 'coarse', 'precise', or 'exact', got {precision!r}")
 
     body.update_world_frame(F_approx)
 
